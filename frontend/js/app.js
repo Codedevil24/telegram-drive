@@ -1,7 +1,7 @@
 /* =========================================================
    TELEGRAM DRIVE
    FRONTEND APPLICATION
-   COMPLETE UPDATED VERSION
+   FOLDER MANAGEMENT V2
 ========================================================= */
 
 "use strict";
@@ -27,6 +27,28 @@ let storageInfo = {
 };
 
 let telegramAuthId = null;
+
+
+/*
+    Folder navigation history.
+
+    Example:
+
+    My Drive
+      ↓
+    Documents
+      ↓
+    Notes
+
+    folderPath becomes:
+
+    [
+        { id: "...", name: "Documents" },
+        { id: "...", name: "Notes" }
+    ]
+*/
+
+let folderPath = [];
 
 
 /* =========================================================
@@ -259,6 +281,18 @@ async function init() {
     setupSidebarNavigation();
 
     setupTelegramEvents();
+
+    /*
+        Folder V2 UI is generated dynamically.
+
+        This means index.html does not need to be
+        changed just to get rename/delete/breadcrumb
+        functionality working.
+    */
+
+    setupFolderNavigationUI();
+
+    setupFolderActionModal();
 
 
     try {
@@ -534,9 +568,7 @@ function setupAuthForms() {
    LOGIN
 ========================================================= */
 
-async function handleLogin(
-    event
-) {
+async function handleLogin(event) {
 
     event.preventDefault();
 
@@ -550,10 +582,7 @@ async function handleLogin(
         loginPassword?.value;
 
 
-    if (
-        !email ||
-        !password
-    ) {
+    if (!email || !password) {
 
         showLoginMessage(
             "Please enter your email and password.",
@@ -638,9 +667,7 @@ async function handleLogin(
    SIGNUP
 ========================================================= */
 
-async function handleSignup(
-    event
-) {
+async function handleSignup(event) {
 
     event.preventDefault();
 
@@ -654,10 +681,7 @@ async function handleSignup(
         signupPassword?.value;
 
 
-    if (
-        !email ||
-        !password
-    ) {
+    if (!email || !password) {
 
         showSignupMessage(
             "Please enter your email and password.",
@@ -668,9 +692,7 @@ async function handleSignup(
     }
 
 
-    if (
-        password.length < 6
-    ) {
+    if (password.length < 6) {
 
         showSignupMessage(
             "Password must be at least 6 characters.",
@@ -761,9 +783,7 @@ async function handleSignup(
    AUTHENTICATED SESSION
 ========================================================= */
 
-async function handleAuthenticatedSession(
-    session
-) {
+async function handleAuthenticatedSession(session) {
 
     if (!session?.user) {
 
@@ -809,12 +829,6 @@ async function handleAuthenticatedSession(
     }
 
 
-    /*
-        Telegram is optional.
-        Drive must continue working
-        even if Telegram account loading fails.
-    */
-
     try {
 
         await loadTelegramAccount();
@@ -833,9 +847,7 @@ async function handleAuthenticatedSession(
    USER UI
 ========================================================= */
 
-function updateUserUI(
-    user
-) {
+function updateUserUI(user) {
 
     if (!sidebarUserEmail) {
         return;
@@ -918,6 +930,8 @@ function resetApplicationState() {
     telegramAuthId =
         null;
 
+    folderPath =
+        [];
 
     folders =
         [];
@@ -956,6 +970,10 @@ function resetApplicationState() {
     );
 
 
+    updateBreadcrumb();
+
+    updateFolderBackButton();
+
     updateStorageUI();
 }
 
@@ -993,13 +1011,6 @@ async function loadUserData() {
         results[2]?.status ===
         "rejected";
 
-
-    /*
-        Storage is optional.
-
-        Only fail the whole drive when both
-        folders and files failed.
-    */
 
     results.forEach(
         result => {
@@ -1046,9 +1057,7 @@ async function loadCurrentUser() {
             );
 
 
-        if (
-            result.user
-        ) {
+        if (result.user) {
 
             currentUser =
                 result.user;
@@ -1102,10 +1111,6 @@ async function loadStorage() {
 
     } catch (error) {
 
-        /*
-            Storage endpoint is optional.
-        */
-
         updateStorageFromFiles();
 
 
@@ -1126,9 +1131,7 @@ async function loadStorage() {
 }
 
 
-function normalizeStorageResult(
-    result
-) {
+function normalizeStorageResult(result) {
 
     const source =
         result?.storage ||
@@ -1137,29 +1140,23 @@ function normalizeStorageResult(
         {};
 
 
-    const used =
-        Number(
-            source.used ??
-            source.usedBytes ??
-            source.storageUsed ??
-            0
-        ) || 0;
-
-
-    const total =
-        Number(
-            source.total ??
-            source.totalBytes ??
-            source.storageLimit ??
-            0
-        ) || 0;
-
-
     return {
 
-        used,
+        used:
+            Number(
+                source.used ??
+                source.usedBytes ??
+                source.storageUsed ??
+                0
+            ) || 0,
 
-        total
+        total:
+            Number(
+                source.total ??
+                source.totalBytes ??
+                source.storageLimit ??
+                0
+            ) || 0
 
     };
 }
@@ -1205,6 +1202,8 @@ function updateStorageUI() {
 
         $("#storageTotal"),
 
+        $("#storageTotalText"),
+
         $("[data-storage-total]")
 
     ].filter(Boolean);
@@ -1236,10 +1235,28 @@ function updateStorageUI() {
     usedElements.forEach(
         element => {
 
-            element.textContent =
-                total > 0
-                    ? `${usedText} of ${totalText}`
-                    : usedText;
+            /*
+                Preserve existing HTML layout.
+
+                storageUsedText currently contains only
+                the "0 B" value in index.html.
+            */
+
+            if (
+                element.id ===
+                "storageUsedText"
+            ) {
+
+                element.textContent =
+                    usedText;
+
+            } else {
+
+                element.textContent =
+                    total > 0
+                        ? `${usedText} of ${totalText}`
+                        : usedText;
+            }
         }
     );
 
@@ -1247,8 +1264,24 @@ function updateStorageUI() {
     totalElements.forEach(
         element => {
 
-            element.textContent =
-                totalText;
+            if (
+                element.id ===
+                "storageTotal"
+            ) {
+
+                /*
+                    Sidebar header currently displays
+                    total capacity.
+                */
+
+                element.textContent =
+                    totalText;
+
+            } else {
+
+                element.textContent =
+                    totalText;
+            }
         }
     );
 
@@ -1305,6 +1338,716 @@ function updateStorageFromFiles() {
 
 
 /* =========================================================
+   FOLDER NAVIGATION UI
+========================================================= */
+
+/*
+    We generate the small navigation controls here
+    instead of forcing another HTML rewrite.
+
+    Result:
+
+    [← Back]  Drive / Documents / Notes
+*/
+
+function setupFolderNavigationUI() {
+
+    const breadcrumb =
+        $(".breadcrumb");
+
+
+    if (!breadcrumb) {
+        return;
+    }
+
+
+    /*
+        Create root breadcrumb button.
+    */
+
+    const children =
+        Array.from(
+            breadcrumb.children
+        );
+
+
+    const driveText =
+        children.find(
+            element =>
+                element.textContent.trim() ===
+                "Drive"
+        );
+
+
+    if (driveText) {
+
+        driveText.classList.add(
+            "breadcrumb-root"
+        );
+
+
+        driveText.setAttribute(
+            "role",
+            "button"
+        );
+
+
+        driveText.setAttribute(
+            "tabindex",
+            "0"
+        );
+
+
+        driveText.title =
+            "Open My Drive";
+
+
+        driveText.addEventListener(
+            "click",
+            openRootDrive
+        );
+
+
+        driveText.addEventListener(
+            "keydown",
+            event => {
+
+                if (
+                    event.key ===
+                    "Enter" ||
+                    event.key ===
+                    " "
+                ) {
+
+                    event.preventDefault();
+
+                    openRootDrive();
+                }
+            }
+        );
+    }
+
+
+    /*
+        Add Back button before breadcrumb.
+    */
+
+    if (
+        !document.getElementById(
+            "folderBackButton"
+        )
+    ) {
+
+        const backButton =
+            document.createElement(
+                "button"
+            );
+
+
+        backButton.type =
+            "button";
+
+
+        backButton.id =
+            "folderBackButton";
+
+
+        backButton.className =
+            "folder-back-button";
+
+
+        backButton.innerHTML =
+            "← Back";
+
+
+        backButton.title =
+            "Go to parent folder";
+
+
+        backButton.addEventListener(
+            "click",
+            goToParentFolder
+        );
+
+
+        breadcrumb.parentElement?.insertBefore(
+            backButton,
+            breadcrumb
+        );
+    }
+
+
+    updateFolderBackButton();
+}
+
+
+function updateFolderBackButton() {
+
+    const button =
+        document.getElementById(
+            "folderBackButton"
+        );
+
+
+    if (!button) {
+        return;
+    }
+
+
+    button.disabled =
+        currentFolderId ===
+        null;
+
+
+    button.classList.toggle(
+        "disabled",
+        currentFolderId ===
+        null
+    );
+}
+
+
+/* =========================================================
+   FOLDER BREADCRUMB
+========================================================= */
+
+function updateBreadcrumb() {
+
+    const breadcrumb =
+        $(".breadcrumb");
+
+
+    if (!breadcrumb) {
+        return;
+    }
+
+
+    breadcrumb.innerHTML =
+        "";
+
+
+    /*
+        Root.
+    */
+
+    const root =
+        document.createElement(
+            "button"
+        );
+
+
+    root.type =
+        "button";
+
+
+    root.className =
+        "breadcrumb-item breadcrumb-root";
+
+
+    root.textContent =
+        "Drive";
+
+
+    root.title =
+        "Open My Drive";
+
+
+    root.addEventListener(
+        "click",
+        openRootDrive
+    );
+
+
+    breadcrumb.appendChild(
+        root
+    );
+
+
+    /*
+        Separator.
+    */
+
+    appendBreadcrumbSeparator(
+        breadcrumb
+    );
+
+
+    /*
+        My Drive.
+    */
+
+    const myDrive =
+        document.createElement(
+            "button"
+        );
+
+
+    myDrive.type =
+        "button";
+
+
+    myDrive.className =
+        "breadcrumb-item";
+
+
+    myDrive.textContent =
+        "My Drive";
+
+
+    myDrive.addEventListener(
+        "click",
+        () => {
+
+            if (
+                currentFolderId ===
+                null
+            ) {
+
+                return;
+            }
+
+
+            openRootDrive();
+        }
+    );
+
+
+    breadcrumb.appendChild(
+        myDrive
+    );
+
+
+    /*
+        Folder levels.
+    */
+
+    folderPath.forEach(
+        (
+            folder,
+            index
+        ) => {
+
+            appendBreadcrumbSeparator(
+                breadcrumb
+            );
+
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            button.type =
+                "button";
+
+
+            button.className =
+                "breadcrumb-item";
+
+
+            button.textContent =
+                folder.name;
+
+
+            button.title =
+                folder.name;
+
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    /*
+                        Clicking the current folder
+                        does nothing.
+                    */
+
+                    if (
+                        index ===
+                        folderPath.length -
+                            1
+                    ) {
+
+                        return;
+                    }
+
+
+                    navigateToFolderPath(
+                        index
+                    );
+                }
+            );
+
+
+            breadcrumb.appendChild(
+                button
+            );
+        }
+    );
+
+
+    /*
+        Current folder is visually represented
+        by the last breadcrumb item.
+
+        No separate span with ID is required anymore.
+    */
+
+    updateFolderBackButton();
+}
+
+
+function appendBreadcrumbSeparator(
+    container
+) {
+
+    const separator =
+        document.createElement(
+            "span"
+        );
+
+
+    separator.className =
+        "breadcrumb-separator";
+
+
+    separator.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    separator.textContent =
+        "/";
+
+
+    container.appendChild(
+        separator
+    );
+}
+
+
+/* =========================================================
+   BUILD FOLDER PATH
+========================================================= */
+
+function buildFolderPath(
+    folderId
+) {
+
+    if (!folderId) {
+        return [];
+    }
+
+
+    const path = [];
+
+    let current =
+        folders.find(
+            folder =>
+                String(
+                    folder.id
+                ) ===
+                String(
+                    folderId
+                )
+        );
+
+
+    /*
+        Walk upwards using parent_id.
+    */
+
+    const visited =
+        new Set();
+
+
+    while (current) {
+
+        const id =
+            String(
+                current.id
+            );
+
+
+        if (
+            visited.has(
+                id
+            )
+        ) {
+
+            break;
+        }
+
+
+        visited.add(
+            id
+        );
+
+
+        path.unshift({
+
+            id:
+                current.id,
+
+            name:
+                current.name
+
+        });
+
+
+        if (
+            current.parent_id ===
+            null ||
+            current.parent_id ===
+            undefined
+        ) {
+
+            break;
+        }
+
+
+        current =
+            folders.find(
+                folder =>
+                    String(
+                        folder.id
+                    ) ===
+                    String(
+                        current.parent_id
+                    )
+            );
+    }
+
+
+    return path;
+}
+
+
+/* =========================================================
+   NAVIGATE TO FOLDER
+========================================================= */
+
+async function navigateToFolder(
+    folderId
+) {
+
+    const folder =
+        folders.find(
+            item =>
+                String(
+                    item.id
+                ) ===
+                String(
+                    folderId
+                )
+        );
+
+
+    if (!folder) {
+
+        showGlobalError(
+            "Folder not found."
+        );
+
+        return;
+    }
+
+
+    currentFolderId =
+        folder.id;
+
+
+    folderPath =
+        buildFolderPath(
+            folder.id
+        );
+
+
+    updateDriveTitle(
+        folder.name
+    );
+
+
+    updateBreadcrumb();
+
+    updateFolderBackButton();
+
+    renderFolders();
+
+
+    try {
+
+        await loadFiles();
+
+    } catch (error) {
+
+        console.error(
+            "Unable to load folder:",
+            error
+        );
+
+
+        showGlobalError(
+            error.message ||
+            "Unable to load folder."
+        );
+    }
+}
+
+
+/* =========================================================
+   OPEN FOLDER
+========================================================= */
+
+async function openFolder(
+    folderId
+) {
+
+    await navigateToFolder(
+        folderId
+    );
+}
+
+
+/* =========================================================
+   NAVIGATE BREADCRUMB PATH
+========================================================= */
+
+async function navigateToFolderPath(
+    index
+) {
+
+    if (
+        index < 0 ||
+        index >= folderPath.length
+    ) {
+
+        return;
+    }
+
+
+    const target =
+        folderPath[index];
+
+
+    if (!target?.id) {
+        return;
+    }
+
+
+    await navigateToFolder(
+        target.id
+    );
+}
+
+
+/* =========================================================
+   GO TO PARENT
+========================================================= */
+
+async function goToParentFolder() {
+
+    if (
+        currentFolderId ===
+        null
+    ) {
+
+        return;
+    }
+
+
+    const currentFolder =
+        folders.find(
+            folder =>
+                String(
+                    folder.id
+                ) ===
+                String(
+                    currentFolderId
+                )
+        );
+
+
+    if (!currentFolder) {
+
+        await openRootDrive();
+
+        return;
+    }
+
+
+    const parentId =
+        currentFolder.parent_id;
+
+
+    if (
+        parentId ===
+        null ||
+        parentId ===
+        undefined
+    ) {
+
+        await openRootDrive();
+
+        return;
+    }
+
+
+    await navigateToFolder(
+        parentId
+    );
+}
+
+
+/* =========================================================
+   ROOT DRIVE
+========================================================= */
+
+async function openRootDrive() {
+
+    currentFolderId =
+        null;
+
+
+    folderPath =
+        [];
+
+
+    updateDriveTitle(
+        "My Drive"
+    );
+
+
+    updateBreadcrumb();
+
+    updateFolderBackButton();
+
+    renderFolders();
+
+
+    try {
+
+        await loadFiles();
+
+    } catch (error) {
+
+        console.error(
+            "Unable to open My Drive:",
+            error
+        );
+
+
+        showGlobalError(
+            error.message ||
+            "Unable to open My Drive."
+        );
+    }
+}
+
+
+/* =========================================================
    FOLDERS
 ========================================================= */
 
@@ -1324,9 +2067,59 @@ async function loadFolders() {
             : [];
 
 
+    /*
+        If currently inside a folder, rebuild
+        breadcrumb from fresh backend data.
+
+        This prevents renamed folders from
+        showing their old names.
+    */
+
+    if (currentFolderId) {
+
+        const currentFolderExists =
+            folders.some(
+                folder =>
+                    String(
+                        folder.id
+                    ) ===
+                    String(
+                        currentFolderId
+                    )
+            );
+
+
+        if (
+            currentFolderExists
+        ) {
+
+            folderPath =
+                buildFolderPath(
+                    currentFolderId
+                );
+
+        } else {
+
+            currentFolderId =
+                null;
+
+            folderPath =
+                [];
+        }
+    }
+
+
+    updateBreadcrumb();
+
+    updateFolderBackButton();
+
     renderFolders();
 }
 
+
+/* =========================================================
+   RENDER FOLDERS
+========================================================= */
 
 function renderFolders() {
 
@@ -1339,35 +2132,69 @@ function renderFolders() {
         "";
 
 
-    const visibleFolders =
+    const search =
+        searchInput?.value
+            .trim()
+            .toLowerCase() ||
+        "";
+
+
+    let visibleFolders =
         folders.filter(
             folder => {
 
-                if (
+                const sameParent =
                     currentFolderId ===
                     null
-                ) {
 
-                    return (
-                        folder.parent_id ===
-                        null ||
-                        folder.parent_id ===
-                        undefined
-                    );
+                        ? (
+                            folder.parent_id ===
+                            null ||
+                            folder.parent_id ===
+                            undefined
+                        )
+
+                        : String(
+                            folder.parent_id
+                        ) ===
+                        String(
+                            currentFolderId
+                        );
+
+
+                if (!sameParent) {
+                    return false;
                 }
 
 
-                return (
-                    String(
-                        folder.parent_id
-                    ) ===
-                    String(
-                        currentFolderId
-                    )
-                );
+                if (!search) {
+                    return true;
+                }
 
+
+                return String(
+                    folder.name ||
+                    ""
+                )
+                    .toLowerCase()
+                    .includes(
+                        search
+                    );
             }
         );
+
+
+    /*
+        Folder count.
+
+        If a count element exists in HTML,
+        update it. Otherwise create no extra UI.
+    */
+
+    updateFolderCount(
+        visibleFolders.length,
+        search
+    );
 
 
     if (
@@ -1379,15 +2206,27 @@ function renderFolders() {
             <div class="empty-state">
 
                 <div class="empty-state-icon">
-                    📁
+                    ${
+                        search
+                            ? "🔍"
+                            : "📁"
+                    }
                 </div>
 
                 <h3>
-                    No folders yet
+                    ${
+                        search
+                            ? "No matching folders"
+                            : "No folders yet"
+                    }
                 </h3>
 
                 <p>
-                    Create a folder to organize your files.
+                    ${
+                        search
+                            ? "Try a different folder name."
+                            : "Create a folder to organize your files."
+                    }
                 </p>
 
             </div>
@@ -1417,9 +2256,19 @@ function renderFolders() {
 
             card.innerHTML = `
 
-                <div class="folder-main">
+                <div
+                    class="folder-main"
+                    role="button"
+                    tabindex="0"
+                    title="Open ${escapeHtml(
+                        folder.name
+                    )}"
+                >
 
-                    <span class="folder-icon">
+                    <span
+                        class="folder-icon"
+                        aria-hidden="true"
+                    >
                         📁
                     </span>
 
@@ -1440,6 +2289,7 @@ function renderFolders() {
                             folder.id
                         )}"
                         title="Rename folder"
+                        aria-label="Rename folder"
                     >
                         ✏️
                     </button>
@@ -1451,6 +2301,7 @@ function renderFolders() {
                             folder.id
                         )}"
                         title="Delete folder"
+                        aria-label="Delete folder"
                     >
                         🗑️
                     </button>
@@ -1460,23 +2311,44 @@ function renderFolders() {
             `;
 
 
-            card.addEventListener(
+            const main =
+                card.querySelector(
+                    ".folder-main"
+                );
+
+
+            main?.addEventListener(
                 "click",
                 event => {
 
-                    if (
-                        event.target.closest(
-                            ".folder-action"
-                        )
-                    ) {
+                    event.preventDefault();
 
-                        return;
-                    }
-
+                    event.stopPropagation();
 
                     openFolder(
                         folder.id
                     );
+                }
+            );
+
+
+            main?.addEventListener(
+                "keydown",
+                event => {
+
+                    if (
+                        event.key ===
+                        "Enter" ||
+                        event.key ===
+                        " "
+                    ) {
+
+                        event.preventDefault();
+
+                        openFolder(
+                            folder.id
+                        );
+                    }
                 }
             );
 
@@ -1499,9 +2371,11 @@ function renderFolders() {
                     "click",
                     event => {
 
+                        event.preventDefault();
+
                         event.stopPropagation();
 
-                        renameFolder(
+                        openRenameFolderModal(
                             button.dataset.id
                         );
                     }
@@ -1521,9 +2395,11 @@ function renderFolders() {
                     "click",
                     event => {
 
+                        event.preventDefault();
+
                         event.stopPropagation();
 
-                        deleteFolder(
+                        openDeleteFolderModal(
                             button.dataset.id
                         );
                     }
@@ -1534,77 +2410,45 @@ function renderFolders() {
 
 
 /* =========================================================
-   OPEN FOLDER
+   FOLDER COUNT
 ========================================================= */
 
-async function openFolder(
-    folderId
+function updateFolderCount(
+    count,
+    searching = false
 ) {
 
-    currentFolderId =
-        folderId;
+    const countElements =
+        $$(".section-count");
 
 
-    const folder =
-        folders.find(
-            item =>
-                String(
-                    item.id
-                ) ===
-                String(
-                    folderId
-                )
-        );
+    const folderSection =
+        $("#foldersTitle")
+            ?.closest(
+                ".drive-section"
+            );
 
 
-    updateDriveTitle(
-        folder?.name ||
-        "Folder"
-    );
+    const countElement =
+        folderSection
+            ?.querySelector(
+                ".section-count"
+            );
 
 
-    renderFolders();
-
-
-    try {
-
-        await loadFiles();
-
-    } catch (error) {
-
-        console.error(
-            "Unable to load folder files:",
-            error
-        );
-
-
-        showGlobalError(
-            error.message ||
-            "Unable to load folder."
-        );
+    if (!countElement) {
+        return;
     }
-}
 
 
-/* =========================================================
-   ROOT DRIVE
-========================================================= */
-
-async function openRootDrive() {
-
-    currentFolderId =
-        null;
-
-
-    updateDriveTitle(
-        "My Drive"
-    );
-
-
-    renderFolders();
-
-
-    await loadFiles();
+    countElement.textContent =
+        searching
+            ? `${count} matching`
+            : `${count} ${
+                count === 1
+                    ? "folder"
+                    : "folders"
+            }`;
 }
 
 
@@ -1709,202 +2553,6 @@ async function createFolder() {
 
 
 /* =========================================================
-   RENAME FOLDER
-========================================================= */
-
-async function renameFolder(
-    folderId
-) {
-
-    const folder =
-        folders.find(
-            item =>
-                String(
-                    item.id
-                ) ===
-                String(
-                    folderId
-                )
-        );
-
-
-    if (!folder) {
-        return;
-    }
-
-
-    const name =
-        window.prompt(
-            "Enter new folder name:",
-            folder.name
-        );
-
-
-    if (
-        name ===
-        null
-    ) {
-
-        return;
-    }
-
-
-    const cleanName =
-        name.trim();
-
-
-    if (!cleanName) {
-
-        showGlobalError(
-            "Folder name cannot be empty."
-        );
-
-        return;
-    }
-
-
-    try {
-
-        await apiRequest(
-            `/api/folders/${encodeURIComponent(
-                folderId
-            )}`,
-            {
-
-                method:
-                    "PATCH",
-
-                body:
-                    JSON.stringify(
-                        {
-                            name:
-                                cleanName
-                        }
-                    )
-
-            }
-        );
-
-
-        await loadFolders();
-
-
-        showGlobalSuccess(
-            "Folder renamed successfully."
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Rename folder error:",
-            error
-        );
-
-
-        showGlobalError(
-            error.message ||
-            "Unable to rename folder."
-        );
-    }
-}
-
-
-/* =========================================================
-   DELETE FOLDER
-========================================================= */
-
-async function deleteFolder(
-    folderId
-) {
-
-    const folder =
-        folders.find(
-            item =>
-                String(
-                    item.id
-                ) ===
-                String(
-                    folderId
-                )
-        );
-
-
-    if (!folder) {
-        return;
-    }
-
-
-    const confirmed =
-        window.confirm(
-            `Delete "${folder.name}"?\n\nFiles directly inside it will be moved to My Drive.`
-        );
-
-
-    if (!confirmed) {
-        return;
-    }
-
-
-    try {
-
-        await apiRequest(
-            `/api/folders/${encodeURIComponent(
-                folderId
-            )}`,
-            {
-
-                method:
-                    "DELETE"
-
-            }
-        );
-
-
-        if (
-            String(
-                currentFolderId
-            ) ===
-            String(
-                folderId
-            )
-        ) {
-
-            await openRootDrive();
-
-        } else {
-
-            await loadFolders();
-
-            await loadFiles();
-        }
-
-
-        await loadStorage();
-
-
-        showGlobalSuccess(
-            "Folder deleted successfully."
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Delete folder error:",
-            error
-        );
-
-
-        showGlobalError(
-            error.message ||
-            "Unable to delete folder."
-        );
-    }
-}
-
-
-/* =========================================================
    FOLDER EVENTS
 ========================================================= */
 
@@ -1924,7 +2572,7 @@ function setupFolderEvents() {
 
 
 /* =========================================================
-   FOLDER MODAL
+   FOLDER CREATE MODAL
 ========================================================= */
 
 function setupFolderModal() {
@@ -2037,6 +2685,929 @@ function clearFolderMessage() {
 
 
 /* =========================================================
+   FOLDER ACTION MODALS
+========================================================= */
+
+let folderActionModal = null;
+
+let folderActionInput = null;
+
+let folderActionMessage = null;
+
+let folderActionConfirmButton = null;
+
+let folderActionCancelButton = null;
+
+let folderActionCloseButton = null;
+
+let folderActionMode = null;
+
+let folderActionFolderId = null;
+
+
+/* =========================================================
+   SETUP ACTION MODAL
+========================================================= */
+
+function setupFolderActionModal() {
+
+    createFolderActionModal();
+
+
+    folderActionConfirmButton?.addEventListener(
+        "click",
+        handleFolderActionConfirm
+    );
+
+
+    folderActionCancelButton?.addEventListener(
+        "click",
+        closeFolderActionModal
+    );
+
+
+    folderActionCloseButton?.addEventListener(
+        "click",
+        closeFolderActionModal
+    );
+
+
+    folderActionModal?.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target ===
+                folderActionModal
+            ) {
+
+                closeFolderActionModal();
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   CREATE ACTION MODAL
+========================================================= */
+
+function createFolderActionModal() {
+
+    if (
+        document.getElementById(
+            "folderActionModal"
+        )
+    ) {
+
+        folderActionModal =
+            document.getElementById(
+                "folderActionModal"
+            );
+
+        cacheFolderActionModalElements();
+
+        return;
+    }
+
+
+    folderActionModal =
+        document.createElement(
+            "div"
+        );
+
+
+    folderActionModal.id =
+        "folderActionModal";
+
+
+    folderActionModal.className =
+        "modal-overlay folder-action-modal";
+
+
+    folderActionModal.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    folderActionModal.innerHTML = `
+
+        <div
+            class="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="folderActionTitle"
+        >
+
+            <div class="modal-header">
+
+                <div>
+
+                    <span
+                        class="modal-eyebrow"
+                        id="folderActionEyebrow"
+                    >
+                        DRIVE
+                    </span>
+
+                    <h2 id="folderActionTitle">
+                        Folder Action
+                    </h2>
+
+                    <p id="folderActionDescription">
+                        Manage this folder.
+                    </p>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="close-btn"
+                    id="folderActionClose"
+                    aria-label="Close dialog"
+                >
+                    &times;
+                </button>
+
+            </div>
+
+
+            <div
+                id="folderRenameArea"
+                class="folder-action-area"
+            >
+
+                <div class="form-group">
+
+                    <label for="folderActionInput">
+                        Folder name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="folderActionInput"
+                        maxlength="255"
+                        autocomplete="off"
+                    >
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="folderDeleteArea"
+                class="folder-action-area"
+                hidden
+            >
+
+                <div class="delete-warning">
+
+                    <div class="delete-warning-icon">
+                        🗑️
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Are you sure?
+                        </strong>
+
+                        <p id="folderDeleteText">
+                            This action cannot be undone.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <p
+                id="folderActionMessage"
+                class="auth-message"
+                aria-live="polite"
+            ></p>
+
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="secondary-modal-btn"
+                    id="folderActionCancel"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    class="auth-submit"
+                    id="folderActionConfirm"
+                >
+                    Confirm
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(
+        folderActionModal
+    );
+
+
+    cacheFolderActionModalElements();
+}
+
+
+/* =========================================================
+   CACHE ACTION MODAL
+========================================================= */
+
+function cacheFolderActionModalElements() {
+
+    folderActionInput =
+        $("#folderActionInput");
+
+
+    folderActionMessage =
+        $("#folderActionMessage");
+
+
+    folderActionConfirmButton =
+        $("#folderActionConfirm");
+
+
+    folderActionCancelButton =
+        $("#folderActionCancel");
+
+
+    folderActionCloseButton =
+        $("#folderActionClose");
+
+
+    folderActionModal =
+        $("#folderActionModal");
+}
+
+
+/* =========================================================
+   OPEN RENAME MODAL
+========================================================= */
+
+function openRenameFolderModal(
+    folderId
+) {
+
+    const folder =
+        getFolderById(
+            folderId
+        );
+
+
+    if (!folder) {
+
+        showGlobalError(
+            "Folder not found."
+        );
+
+        return;
+    }
+
+
+    folderActionMode =
+        "rename";
+
+
+    folderActionFolderId =
+        folderId;
+
+
+    const title =
+        $("#folderActionTitle");
+
+
+    const eyebrow =
+        $("#folderActionEyebrow");
+
+
+    const description =
+        $("#folderActionDescription");
+
+
+    const renameArea =
+        $("#folderRenameArea");
+
+
+    const deleteArea =
+        $("#folderDeleteArea");
+
+
+    if (title) {
+
+        title.textContent =
+            "Rename Folder";
+    }
+
+
+    if (eyebrow) {
+
+        eyebrow.textContent =
+            "FOLDER";
+    }
+
+
+    if (description) {
+
+        description.textContent =
+            "Choose a new name for this folder.";
+    }
+
+
+    if (renameArea) {
+
+        renameArea.hidden =
+            false;
+    }
+
+
+    if (deleteArea) {
+
+        deleteArea.hidden =
+            true;
+    }
+
+
+    if (folderActionConfirmButton) {
+
+        folderActionConfirmButton.textContent =
+            "Rename";
+    }
+
+
+    if (folderActionInput) {
+
+        folderActionInput.value =
+            folder.name || "";
+    }
+
+
+    clearFolderActionMessage();
+
+    showFolderActionModal();
+
+
+    setTimeout(
+        () => {
+
+            folderActionInput?.focus();
+
+            folderActionInput?.select();
+
+        },
+        50
+    );
+}
+
+
+/* =========================================================
+   OPEN DELETE MODAL
+========================================================= */
+
+function openDeleteFolderModal(
+    folderId
+) {
+
+    const folder =
+        getFolderById(
+            folderId
+        );
+
+
+    if (!folder) {
+
+        showGlobalError(
+            "Folder not found."
+        );
+
+        return;
+    }
+
+
+    folderActionMode =
+        "delete";
+
+
+    folderActionFolderId =
+        folderId;
+
+
+    const title =
+        $("#folderActionTitle");
+
+
+    const eyebrow =
+        $("#folderActionEyebrow");
+
+
+    const description =
+        $("#folderActionDescription");
+
+
+    const renameArea =
+        $("#folderRenameArea");
+
+
+    const deleteArea =
+        $("#folderDeleteArea");
+
+
+    const deleteText =
+        $("#folderDeleteText");
+
+
+    if (title) {
+
+        title.textContent =
+            "Delete Folder";
+    }
+
+
+    if (eyebrow) {
+
+        eyebrow.textContent =
+            "FOLDER";
+    }
+
+
+    if (description) {
+
+        description.textContent =
+            "Remove this folder from your drive.";
+    }
+
+
+    if (renameArea) {
+
+        renameArea.hidden =
+            true;
+    }
+
+
+    if (deleteArea) {
+
+        deleteArea.hidden =
+            false;
+    }
+
+
+    if (deleteText) {
+
+        deleteText.textContent =
+            `Delete "${folder.name}"? Files directly inside it will be moved to My Drive.`;
+    }
+
+
+    if (folderActionConfirmButton) {
+
+        folderActionConfirmButton.textContent =
+            "Delete";
+
+
+        folderActionConfirmButton.classList.add(
+            "danger-confirm"
+        );
+    }
+
+
+    clearFolderActionMessage();
+
+    showFolderActionModal();
+}
+
+
+/* =========================================================
+   SHOW ACTION MODAL
+========================================================= */
+
+function showFolderActionModal() {
+
+    if (!folderActionModal) {
+        return;
+    }
+
+
+    folderActionModal.classList.add(
+        "show"
+    );
+
+
+    folderActionModal.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+}
+
+
+/* =========================================================
+   CLOSE ACTION MODAL
+========================================================= */
+
+function closeFolderActionModal() {
+
+    if (!folderActionModal) {
+        return;
+    }
+
+
+    folderActionModal.classList.remove(
+        "show"
+    );
+
+
+    folderActionModal.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+
+    folderActionMode =
+        null;
+
+
+    folderActionFolderId =
+        null;
+
+
+    if (folderActionInput) {
+
+        folderActionInput.value =
+            "";
+    }
+
+
+    clearFolderActionMessage();
+
+
+    folderActionConfirmButton?.classList.remove(
+        "danger-confirm"
+    );
+}
+
+
+/* =========================================================
+   ACTION CONFIRM
+========================================================= */
+
+async function handleFolderActionConfirm() {
+
+    if (
+        !folderActionMode ||
+        !folderActionFolderId
+    ) {
+
+        return;
+    }
+
+
+    if (
+        folderActionMode ===
+        "rename"
+    ) {
+
+        await performRenameFolder();
+
+        return;
+    }
+
+
+    if (
+        folderActionMode ===
+        "delete"
+    ) {
+
+        await performDeleteFolder();
+    }
+}
+
+
+/* =========================================================
+   PERFORM RENAME
+========================================================= */
+
+async function performRenameFolder() {
+
+    const folder =
+        getFolderById(
+            folderActionFolderId
+        );
+
+
+    if (!folder) {
+
+        closeFolderActionModal();
+
+        showGlobalError(
+            "Folder not found."
+        );
+
+        return;
+    }
+
+
+    const name =
+        folderActionInput?.value.trim();
+
+
+    if (!name) {
+
+        setFolderActionMessage(
+            "Folder name cannot be empty.",
+            "error"
+        );
+
+        folderActionInput?.focus();
+
+        return;
+    }
+
+
+    if (
+        name.length >
+        255
+    ) {
+
+        setFolderActionMessage(
+            "Folder name is too long.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if (
+        name ===
+        folder.name
+    ) {
+
+        closeFolderActionModal();
+
+        return;
+    }
+
+
+    const button =
+        folderActionConfirmButton;
+
+
+    setButtonLoading(
+        button,
+        true,
+        "Renaming..."
+    );
+
+
+    try {
+
+        await apiRequest(
+            `/api/folders/${encodeURIComponent(
+                folder.id
+            )}`,
+            {
+
+                method:
+                    "PATCH",
+
+                body:
+                    JSON.stringify(
+                        {
+                            name
+                        }
+                    )
+
+            }
+        );
+
+
+        closeFolderActionModal();
+
+
+        await loadFolders();
+
+
+        showGlobalSuccess(
+            "Folder renamed successfully."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Rename folder error:",
+            error
+        );
+
+
+        setFolderActionMessage(
+            error.message ||
+            "Unable to rename folder.",
+            "error"
+        );
+
+
+    } finally {
+
+        setButtonLoading(
+            button,
+            false,
+            "Rename"
+        );
+    }
+}
+
+
+/* =========================================================
+   PERFORM DELETE
+========================================================= */
+
+async function performDeleteFolder() {
+
+    const folder =
+        getFolderById(
+            folderActionFolderId
+        );
+
+
+    if (!folder) {
+
+        closeFolderActionModal();
+
+        showGlobalError(
+            "Folder not found."
+        );
+
+        return;
+    }
+
+
+    const folderId =
+        folder.id;
+
+
+    const button =
+        folderActionConfirmButton;
+
+
+    setButtonLoading(
+        button,
+        true,
+        "Deleting..."
+    );
+
+
+    try {
+
+        await apiRequest(
+            `/api/folders/${encodeURIComponent(
+                folderId
+            )}`,
+            {
+
+                method:
+                    "DELETE"
+
+            }
+        );
+
+
+        const deletingCurrentFolder =
+            String(
+                currentFolderId
+            ) ===
+            String(
+                folderId
+            );
+
+
+        closeFolderActionModal();
+
+
+        if (
+            deletingCurrentFolder
+        ) {
+
+            await openRootDrive();
+
+        } else {
+
+            await loadFolders();
+
+            await loadFiles();
+        }
+
+
+        await loadStorage();
+
+
+        showGlobalSuccess(
+            "Folder deleted successfully."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Delete folder error:",
+            error
+        );
+
+
+        setFolderActionMessage(
+            error.message ||
+            "Unable to delete folder.",
+            "error"
+        );
+
+
+    } finally {
+
+        setButtonLoading(
+            button,
+            false,
+            "Delete"
+        );
+    }
+}
+
+
+/* =========================================================
+   ACTION MESSAGE
+========================================================= */
+
+function setFolderActionMessage(
+    message,
+    type
+) {
+
+    if (!folderActionMessage) {
+        return;
+    }
+
+
+    folderActionMessage.textContent =
+        message;
+
+
+    folderActionMessage.className =
+        `auth-message ${type}`;
+}
+
+
+function clearFolderActionMessage() {
+
+    if (!folderActionMessage) {
+        return;
+    }
+
+
+    folderActionMessage.textContent =
+        "";
+
+
+    folderActionMessage.className =
+        "auth-message";
+}
+
+
+/* =========================================================
+   GET FOLDER
+========================================================= */
+
+function getFolderById(
+    folderId
+) {
+
+    return folders.find(
+        folder =>
+            String(
+                folder.id
+            ) ===
+            String(
+                folderId
+            )
+    );
+}
+
+
+/* =========================================================
    FILES
 ========================================================= */
 
@@ -2112,9 +3683,7 @@ function renderFiles() {
         "";
 
 
-    if (
-        !files.length
-    ) {
+    if (!files.length) {
 
         fileGrid.innerHTML = `
 
@@ -2181,14 +3750,6 @@ function renderFiles() {
 
             `;
 
-
-            /*
-                Only one activation path for mouse/touch.
-
-                The previous pointerdown diagnostic
-                listener was unnecessary and could make
-                interaction confusing.
-            */
 
             card.addEventListener(
                 "click",
@@ -2273,6 +3834,16 @@ function setupSearch() {
             timer =
                 setTimeout(
                     async () => {
+
+                        /*
+                            Folders are local data, so
+                            render immediately.
+
+                            Files still use backend search.
+                        */
+
+                        renderFolders();
+
 
                         try {
 
@@ -2607,9 +4178,7 @@ function resetTelegramAuthFlow() {
    TELEGRAM PHONE
 ========================================================= */
 
-async function handleTelegramPhone(
-    event
-) {
+async function handleTelegramPhone(event) {
 
     event.preventDefault();
 
@@ -2664,9 +4233,7 @@ async function handleTelegramPhone(
             );
 
 
-        if (
-            !result.authId
-        ) {
+        if (!result.authId) {
 
             throw new Error(
                 "Telegram authentication session was not created."
@@ -2720,18 +4287,14 @@ async function handleTelegramPhone(
    TELEGRAM OTP
 ========================================================= */
 
-async function handleTelegramOtp(
-    event
-) {
+async function handleTelegramOtp(event) {
 
     event.preventDefault();
 
     clearTelegramMessages();
 
 
-    if (
-        !telegramAuthId
-    ) {
+    if (!telegramAuthId) {
 
         setTelegramMessage(
             telegramOtpMessage,
@@ -2799,9 +4362,7 @@ async function handleTelegramOtp(
             );
 
 
-        if (
-            result.requiresPassword
-        ) {
+        if (result.requiresPassword) {
 
             showTelegramPasswordStep();
 
@@ -2809,9 +4370,7 @@ async function handleTelegramOtp(
         }
 
 
-        if (
-            result.connected
-        ) {
+        if (result.connected) {
 
             showTelegramConnectedState(
                 result.account
@@ -2872,18 +4431,14 @@ async function handleTelegramOtp(
    TELEGRAM 2FA
 ========================================================= */
 
-async function handleTelegramPassword(
-    event
-) {
+async function handleTelegramPassword(event) {
 
     event.preventDefault();
 
     clearTelegramMessages();
 
 
-    if (
-        !telegramAuthId
-    ) {
+    if (!telegramAuthId) {
 
         setTelegramMessage(
             telegramPasswordMessage,
@@ -2951,9 +4506,7 @@ async function handleTelegramPassword(
             );
 
 
-        if (
-            !result.connected
-        ) {
+        if (!result.connected) {
 
             throw new Error(
                 "Telegram connection was not completed."
@@ -3014,30 +4567,19 @@ async function handleTelegramPassword(
 function showTelegramPhoneStep() {
 
     if (telegramPhoneForm) {
-
-        telegramPhoneForm.hidden =
-            false;
+        telegramPhoneForm.hidden = false;
     }
-
 
     if (telegramOtpForm) {
-
-        telegramOtpForm.hidden =
-            true;
+        telegramOtpForm.hidden = true;
     }
-
 
     if (telegramPasswordForm) {
-
-        telegramPasswordForm.hidden =
-            true;
+        telegramPasswordForm.hidden = true;
     }
 
-
     if (telegramConnectedState) {
-
-        telegramConnectedState.hidden =
-            true;
+        telegramConnectedState.hidden = true;
     }
 
 
@@ -3055,30 +4597,19 @@ function showTelegramPhoneStep() {
 function showTelegramOtpStep() {
 
     if (telegramPhoneForm) {
-
-        telegramPhoneForm.hidden =
-            true;
+        telegramPhoneForm.hidden = true;
     }
-
 
     if (telegramOtpForm) {
-
-        telegramOtpForm.hidden =
-            false;
+        telegramOtpForm.hidden = false;
     }
-
 
     if (telegramPasswordForm) {
-
-        telegramPasswordForm.hidden =
-            true;
+        telegramPasswordForm.hidden = true;
     }
 
-
     if (telegramConnectedState) {
-
-        telegramConnectedState.hidden =
-            true;
+        telegramConnectedState.hidden = true;
     }
 
 
@@ -3096,30 +4627,19 @@ function showTelegramOtpStep() {
 function showTelegramPasswordStep() {
 
     if (telegramPhoneForm) {
-
-        telegramPhoneForm.hidden =
-            true;
+        telegramPhoneForm.hidden = true;
     }
-
 
     if (telegramOtpForm) {
-
-        telegramOtpForm.hidden =
-            true;
+        telegramOtpForm.hidden = true;
     }
-
 
     if (telegramPasswordForm) {
-
-        telegramPasswordForm.hidden =
-            false;
+        telegramPasswordForm.hidden = false;
     }
 
-
     if (telegramConnectedState) {
-
-        telegramConnectedState.hidden =
-            true;
+        telegramConnectedState.hidden = true;
     }
 
 
@@ -3139,30 +4659,19 @@ function showTelegramConnectedState(
 ) {
 
     if (telegramPhoneForm) {
-
-        telegramPhoneForm.hidden =
-            true;
+        telegramPhoneForm.hidden = true;
     }
-
 
     if (telegramOtpForm) {
-
-        telegramOtpForm.hidden =
-            true;
+        telegramOtpForm.hidden = true;
     }
-
 
     if (telegramPasswordForm) {
-
-        telegramPasswordForm.hidden =
-            true;
+        telegramPasswordForm.hidden = true;
     }
 
-
     if (telegramConnectedState) {
-
-        telegramConnectedState.hidden =
-            false;
+        telegramConnectedState.hidden = false;
     }
 
 
@@ -3190,18 +4699,14 @@ function showTelegramConnectedState(
             );
 
 
-    if (
-        connectedTelegramName
-    ) {
+    if (connectedTelegramName) {
 
         connectedTelegramName.textContent =
             name;
     }
 
 
-    if (
-        connectedTelegramUsername
-    ) {
+    if (connectedTelegramUsername) {
 
         connectedTelegramUsername.textContent =
             username;
@@ -3317,10 +4822,8 @@ async function disconnectTelegram() {
         await apiRequest(
             "/api/telegram/account",
             {
-
                 method:
                     "DELETE"
-
             }
         );
 
@@ -3331,7 +4834,6 @@ async function disconnectTelegram() {
 
 
         resetTelegramAuthFlow();
-
 
         closeTelegramConnectModal();
 
@@ -3396,9 +4898,7 @@ function closeTelegramImportModal() {
 
 
     if (urlError) {
-
-        urlError.textContent =
-            "";
+        urlError.textContent = "";
     }
 }
 
@@ -3407,17 +4907,13 @@ function closeTelegramImportModal() {
    TELEGRAM IMPORT
 ========================================================= */
 
-async function handleTelegramImport(
-    event
-) {
+async function handleTelegramImport(event) {
 
     event.preventDefault();
 
 
     if (urlError) {
-
-        urlError.textContent =
-            "";
+        urlError.textContent = "";
     }
 
 
@@ -3425,11 +4921,7 @@ async function handleTelegramImport(
         telegramUrl?.value.trim();
 
 
-    if (
-        !isTelegramUrl(
-            url
-        )
-    ) {
+    if (!isTelegramUrl(url)) {
 
         if (urlError) {
 
@@ -3525,9 +5017,7 @@ async function handleTelegramImport(
    TELEGRAM URL VALIDATION
 ========================================================= */
 
-function isTelegramUrl(
-    url
-) {
+function isTelegramUrl(url) {
 
     if (
         typeof url !==
@@ -3552,10 +5042,8 @@ function isTelegramUrl(
 
 
         if (
-            hostname !==
-            "t.me" &&
-            hostname !==
-            "telegram.me"
+            hostname !== "t.me" &&
+            hostname !== "telegram.me"
         ) {
 
             return false;
@@ -3568,31 +5056,14 @@ function isTelegramUrl(
                 .filter(Boolean);
 
 
-        if (
-            parts.length <
-            2
-        ) {
-
+        if (parts.length < 2) {
             return false;
         }
 
 
-        /*
-            Private Telegram link:
+        if (parts[0] === "c") {
 
-            t.me/c/chat/message
-        */
-
-        if (
-            parts[0] ===
-            "c"
-        ) {
-
-            if (
-                parts.length <
-                3
-            ) {
-
+            if (parts.length < 3) {
                 return false;
             }
 
@@ -3617,18 +5088,11 @@ function isTelegramUrl(
                     messageId
                 ) &&
 
-                messageId >
-                    0
+                messageId > 0
 
             );
         }
 
-
-        /*
-            Public Telegram link:
-
-            t.me/channel/message
-        */
 
         const messageId =
             Number(
@@ -3642,8 +5106,7 @@ function isTelegramUrl(
                 messageId
             ) &&
 
-            messageId >
-                0
+            messageId > 0
 
         );
 
@@ -3687,9 +5150,7 @@ async function apiRequest(
         data?.session;
 
 
-    if (
-        !session?.access_token
-    ) {
+    if (!session?.access_token) {
 
         showAuthScreen();
 
@@ -3710,7 +5171,6 @@ async function apiRequest(
 
     currentSession =
         session;
-
 
     currentUser =
         session.user;
@@ -3780,9 +5240,7 @@ async function apiRequest(
     }
 
 
-    if (
-        !response.ok
-    ) {
+    if (!response.ok) {
 
         const requestError =
             new Error(
@@ -3976,9 +5434,7 @@ function getAuthErrorMessage(
         )
     ) {
 
-        return (
-            "Incorrect email or password."
-        );
+        return "Incorrect email or password.";
     }
 
 
@@ -3988,9 +5444,7 @@ function getAuthErrorMessage(
         )
     ) {
 
-        return (
-            "Please confirm your email before logging in."
-        );
+        return "Please confirm your email before logging in.";
     }
 
 
@@ -4000,24 +5454,16 @@ function getAuthErrorMessage(
         )
     ) {
 
-        return (
-            "This email is already registered. Please log in."
-        );
+        return "This email is already registered. Please log in.";
     }
 
 
     if (
-        lower.includes(
-            "rate limit"
-        ) ||
-        lower.includes(
-            "email rate limit"
-        )
+        lower.includes("rate limit") ||
+        lower.includes("email rate limit")
     ) {
 
-        return (
-            "Supabase email rate limit reached. Please wait before requesting another confirmation email."
-        );
+        return "Supabase email rate limit reached. Please wait before requesting another confirmation email.";
     }
 
 
@@ -4027,9 +5473,7 @@ function getAuthErrorMessage(
         )
     ) {
 
-        return (
-            "Password must be at least 6 characters."
-        );
+        return "Password must be at least 6 characters.";
     }
 
 
@@ -4039,9 +5483,7 @@ function getAuthErrorMessage(
         )
     ) {
 
-        return (
-            "New account registration is currently disabled in Supabase."
-        );
+        return "New account registration is currently disabled in Supabase.";
     }
 
 
@@ -4124,20 +5566,9 @@ function updateDriveTitle(
         $(".content-header h1");
 
 
-    const breadcrumb =
-        $("#breadcrumbCurrent");
-
-
     if (heading) {
 
         heading.textContent =
-            title;
-    }
-
-
-    if (breadcrumb) {
-
-        breadcrumb.textContent =
             title;
     }
 }
@@ -4166,9 +5597,7 @@ function getFileIcon(
 
 
     if (
-        mime.startsWith(
-            "video/"
-        ) ||
+        mime.startsWith("video/") ||
         /\.(mp4|mkv|avi|mov|webm|m4v|3gp)$/i.test(
             name
         )
@@ -4179,9 +5608,7 @@ function getFileIcon(
 
 
     if (
-        mime.startsWith(
-            "image/"
-        ) ||
+        mime.startsWith("image/") ||
         /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(
             name
         )
@@ -4192,12 +5619,8 @@ function getFileIcon(
 
 
     if (
-        mime.includes(
-            "pdf"
-        ) ||
-        name.endsWith(
-            ".pdf"
-        )
+        mime.includes("pdf") ||
+        name.endsWith(".pdf")
     ) {
 
         return "📄";
@@ -4205,9 +5628,7 @@ function getFileIcon(
 
 
     if (
-        mime.startsWith(
-            "audio/"
-        ) ||
+        mime.startsWith("audio/") ||
         /\.(mp3|wav|m4a|flac|ogg)$/i.test(
             name
         )
@@ -4245,26 +5666,17 @@ function formatBytes(
         ) || 0;
 
 
-    if (
-        value <= 0
-    ) {
-
+    if (value <= 0) {
         return "0 B";
     }
 
 
     const units = [
-
         "B",
-
         "KB",
-
         "MB",
-
         "GB",
-
         "TB"
-
     ];
 
 
@@ -4272,16 +5684,11 @@ function formatBytes(
         Math.min(
 
             Math.floor(
-                Math.log(
-                    value
-                ) /
-                Math.log(
-                    1024
-                )
+                Math.log(value) /
+                Math.log(1024)
             ),
 
-            units.length -
-                1
+            units.length - 1
 
         );
 
@@ -4295,16 +5702,10 @@ function formatBytes(
 
 
     const decimals =
-        index ===
-        0
-
+        index === 0
             ? 0
-
-            : converted >=
-                10
-
+            : converted >= 10
                 ? 0
-
                 : 1;
 
 
@@ -4469,13 +5870,9 @@ function capitalize(
 
     return (
 
-        text.charAt(
-            0
-        ).toUpperCase() +
+        text.charAt(0).toUpperCase() +
 
-        text.slice(
-            1
-        )
+        text.slice(1)
 
     );
 }
@@ -4525,6 +5922,16 @@ document.addEventListener(
         ) {
 
             closeFolderModal();
+        }
+
+
+        if (
+            folderActionModal?.classList.contains(
+                "show"
+            )
+        ) {
+
+            closeFolderActionModal();
         }
 
 
@@ -4595,9 +6002,7 @@ async function openFileViewer(
             data?.session;
 
 
-        if (
-            !session?.access_token
-        ) {
+        if (!session?.access_token) {
 
             showAuthScreen();
 
@@ -4607,19 +6012,6 @@ async function openFileViewer(
             );
         }
 
-
-        /*
-            IMPORTANT:
-
-            Do NOT fetch the complete Telegram
-            file into a Blob.
-
-            The browser media element directly
-            requests the backend stream.
-
-            Browser sends HTTP Range requests
-            automatically.
-        */
 
         const streamUrl =
             `/api/files/${encodeURIComponent(
@@ -4650,29 +6042,22 @@ async function openFileViewer(
 
 
         const isVideo =
-            mime.startsWith(
-                "video/"
-            ) ||
+            mime.startsWith("video/") ||
             /\.(mp4|m4v|webm|mov|mkv|avi|3gp)$/i.test(
                 name
             );
 
 
         const isImage =
-            mime.startsWith(
-                "image/"
-            ) ||
+            mime.startsWith("image/") ||
             /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(
                 name
             );
 
 
         const isPdf =
-            mime ===
-            "application/pdf" ||
-            name.endsWith(
-                ".pdf"
-            );
+            mime === "application/pdf" ||
+            name.endsWith(".pdf");
 
 
         if (isVideo) {
@@ -4746,7 +6131,6 @@ function createFileViewer() {
 
 
     if (viewer) {
-
         return viewer;
     }
 
@@ -4775,15 +6159,11 @@ function createFileViewer() {
 
                 <div class="file-viewer-title">
 
-                    <span
-                        id="fileViewerIcon"
-                    >
+                    <span id="fileViewerIcon">
                         🎬
                     </span>
 
-                    <span
-                        id="fileViewerName"
-                    >
+                    <span id="fileViewerName">
                         File
                     </span>
 
@@ -4994,49 +6374,13 @@ function showVideoViewer(
     }
 
 
-    /*
-        IMPORTANT:
-
-        Set src directly instead of putting the
-        stream URL inside innerHTML.
-
-        This avoids unnecessary HTML parsing
-        and gives us a clean media lifecycle.
-    */
-
     video.src =
         streamUrl;
 
 
     video.addEventListener(
-        "loadedmetadata",
-        () => {
-
-            /*
-                Metadata is loaded.
-
-                Do not call play() automatically.
-                Let the user/browser controls decide.
-            */
-
-        },
-        {
-            once:
-                true
-        }
-    );
-
-
-    video.addEventListener(
         "error",
         () => {
-
-            /*
-                Closing the viewer causes the
-                video source to be cleared.
-
-                Ignore that expected error.
-            */
 
             if (
                 !viewer.classList.contains(
@@ -5065,13 +6409,6 @@ function showVideoViewer(
         }
     );
 
-
-    /*
-        Start the native media loading process.
-
-        Browser will automatically send Range
-        requests to the backend.
-    */
 
     video.load();
 }
@@ -5264,21 +6601,17 @@ function showGenericFileViewer(
 
 
                 <h2>
-
                     ${escapeHtml(
                         file.name ||
                         "Telegram file"
                     )}
-
                 </h2>
 
 
                 <p>
-
                     ${formatBytes(
                         file.size
                     )}
-
                 </p>
 
 
@@ -5334,29 +6667,11 @@ function closeFileViewer() {
 
         try {
 
-            /*
-                Stop playback first.
-            */
-
             video.pause();
-
-
-            /*
-                Remove source.
-
-                This is important because otherwise
-                the browser may continue making Range
-                requests after the viewer closes.
-            */
 
             video.removeAttribute(
                 "src"
             );
-
-
-            /*
-                Clear the media resource.
-            */
 
             video.load();
 
