@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Telegram Drive - Your personal Telegram-powered cloud drive."
+    >
+
+    <title>Telegram Drive</title>
+
+
+    <!-- =====================================================
+         STYLES
+    ====================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+
+
+    <!-- =====================================================
+         SUPABASE
+    ====================================================== -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+        defer
+    ></script>
+
+</head>
+
+
+<body>
+
+
+<!-- =====================================================
+     MAIN APPLICATION
+====================================================== -->
+
+<div
+    class="app"
+    id="app"
+    style="display: none;"
+>
+
+
+    <!-- =================================================
+         SIDEBAR
+    ================================================== -->
+
+    <aside
+        class="sidebar"
+        aria-label="Main navigation"
+    >
+
+
+        <!-- BRAND -->
+
+        <div class="logo">
+
+            <span
+                class="logo-icon"
+                aria-hidden="true"
+            >
+                ☁
+            </span>
+
+            <span>
+                Telegram Drive
+            </span>
+
+        </div>
+
+
+        <!-- NEW BUTTON -->
+
+        <button
+            type="button"
+            class="new-btn"
+            id="newButton"
+        >
+
+            <span aria-hidden="true">
+                ＋
+            </span>
+
+            <span>
+                New
+            </span>
+
+        </button>
+
+
+        <!-- NAVIGATION -->
+
+        <nav class="sidebar-nav">
+
+
+            <a
+                href="#"
+                class="active"
+                data-view="drive"
+            >
+
+                <span aria-hidden="true">
+                    🏠
+                </span>
+
+                <span>
+                    My Drive
+                </span>
+
+            </a>
+
+
+            <a
+                href="#"
+                data-view="recent"
+            >
+
+                <span aria-hidden="true">
+                    🕘
+                </span>
+
+                <span>
+                    Recent
+                </span>
+
+            </a>
+
+
+            <a
+                href="#"
+                data-view="starred"
+            >
+
+                <span aria-hidden="true">
+                    ⭐
+                </span>
+
+                <span>
+                    Starred
+                </span>
+
+            </a>
+
+
+            <a
+                href="#"
+                data-view="trash"
+            >
+
+                <span aria-hidden="true">
+                    🗑️
+                </span>
+
+                <span>
+                    Trash
+                </span>
+
+            </a>
+
+
+        </nav>
+
+
+        <!-- =================================================
+             STORAGE
+        ================================================== -->
+
+        <div class="storage-box">
+
+
+            <div class="storage-title">
+
+                <span>
+                    Storage
+                </span>
+
+                <span id="storageTotal">
+                    15 GB
+                </span>
+
+            </div>
+
+
+            <div
+                class="storage-bar"
+                role="progressbar"
+                aria-label="Storage usage"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+            >
+
+                <div
+                    class="storage-used"
+                    id="storageBar"
+                ></div>
+
+            </div>
+
+
+            <small>
+
+                <span id="storageUsedText">
+                    0 B
+                </span>
+
+                of
+
+                <span id="storageTotalText">
+                    15 GB
+                </span>
+
+                used
+
+            </small>
+
+
+        </div>
+
+
+        <!-- =================================================
+             USER
+        ================================================== -->
+
+        <div class="sidebar-user">
+
+
+            <div
+                class="sidebar-user-avatar"
+                aria-hidden="true"
+            >
+                👤
+            </div>
+
+
+            <div class="sidebar-user-info">
+
+                <strong>
+                    Account
+                </strong>
+
+                <span id="sidebarUserEmail">
+                    —
+                </span>
+
+            </div>
+
+
+            <button
+                type="button"
+                id="logoutButton"
+                title="Logout"
+                aria-label="Logout"
+            >
+                ↪
+            </button>
+
+
+        </div>
+
+
+    </aside>
+
+
+
+    <!-- =================================================
+         MAIN CONTENT
+    ================================================== -->
+
+    <main class="main">
+
+
+        <!-- =================================================
+             TOPBAR
+        ================================================== -->
+
+        <header class="topbar">
+
+
+            <!-- SEARCH -->
+
+            <div class="search">
+
+                <span
+                    aria-hidden="true"
+                >
+                    🔍
+                </span>
+
+
+                <input
+                    type="search"
+                    id="searchInput"
+                    placeholder="Search files..."
+                    autocomplete="off"
+                    aria-label="Search files"
+                >
+
+            </div>
+
+
+            <!-- TOPBAR ACTIONS -->
+
+            <div class="topbar-actions">
+
+
+                <button
+                    type="button"
+                    class="icon-button"
+                    id="notificationButton"
+                    title="Notifications"
+                    aria-label="Notifications"
+                >
+
+                    🔔
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="profile"
+                    id="profileButton"
+                    title="Account"
+                    aria-label="Account"
+                >
+
+                    👤
+
+                </button>
+
+
+            </div>
+
+
+        </header>
+
+
+
+        <!-- =================================================
+             CONTENT
+        ================================================== -->
+
+        <section class="content">
+
+
+            <!-- =================================================
+                 CONTENT HEADER
+            ================================================== -->
+
+            <div class="content-header">
+
+
+                <div>
+
+
+                    <!-- BREADCRUMB -->
+
+                    <div
+                        class="breadcrumb"
+                        aria-label="Breadcrumb"
+                    >
+
+                        <span>
+                            Drive
+                        </span>
+
+                        <span aria-hidden="true">
+                            /
+                        </span>
+
+                        <span id="breadcrumbCurrent">
+                            My Drive
+                        </span>
+
+                    </div>
+
+
+                    <h1>
+                        My Drive
+                    </h1>
+
+
+                    <p>
+                        Manage your Telegram files
+                    </p>
+
+
+                </div>
+
+
+                <!-- ACTIONS -->
+
+                <div class="content-actions">
+
+
+                    <!-- CONNECT TELEGRAM -->
+
+                    <button
+                        type="button"
+                        class="connect-telegram-btn"
+                        id="connectTelegramButton"
+                    >
+
+                        <span aria-hidden="true">
+                            🔗
+                        </span>
+
+                        <span id="telegramConnectionText">
+                            Connect Telegram
+                        </span>
+
+                    </button>
+
+
+                    <!-- ADD TELEGRAM LINK -->
+
+                    <button
+                        type="button"
+                        class="telegram-btn"
+                        id="addTelegramLinkButton"
+                    >
+
+                        <span aria-hidden="true">
+                            ＋
+                        </span>
+
+                        <span>
+                            Add Telegram Link
+                        </span>
+
+                    </button>
+
+
+                </div>
+
+
+            </div>
+
+
+
+            <!-- =================================================
+                 FOLDERS
+            ================================================== -->
+
+            <section
+                class="drive-section"
+                aria-labelledby="foldersTitle"
+            >
+
+
+                <div class="section-header">
+
+
+                    <div>
+
+                        <h2 id="foldersTitle">
+                            Folders
+                        </h2>
+
+                        <span class="section-count">
+                            Your folders
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        class="small-action-btn"
+                        id="createFolderButton"
+                    >
+
+                        ＋ Folder
+
+                    </button>
+
+
+                </div>
+
+
+                <div
+                    class="folder-grid"
+                    id="folderGrid"
+                    aria-live="polite"
+                >
+
+                    <!-- Dynamic folders -->
+
+                </div>
+
+
+            </section>
+
+
+
+            <!-- =================================================
+                 FILES
+            ================================================== -->
+
+            <section
+                class="drive-section"
+                aria-labelledby="filesTitle"
+            >
+
+
+                <div
+                    class="section-header files-header"
+                >
+
+
+                    <div>
+
+                        <h2 id="filesTitle">
+                            Files
+                        </h2>
+
+                        <span class="section-count">
+                            Your files
+                        </span>
+
+                    </div>
+
+
+                </div>
+
+
+                <div
+                    class="file-grid"
+                    id="fileGrid"
+                    aria-live="polite"
+                >
+
+                    <!-- Dynamic files -->
+
+                </div>
+
+
+            </section>
+
+
+        </section>
+
+
+    </main>
+
+
+</div>
+
+
+
+<!-- =====================================================
+     AUTHENTICATION SCREEN
+====================================================== -->
+
+<div
+    class="auth-screen"
+    id="authScreen"
+>
+
+
+    <div class="auth-card">
+
+
+        <!-- =================================================
+             BRAND
+        ================================================== -->
+
+        <div class="auth-brand">
+
+
+            <div
+                class="auth-logo"
+                aria-hidden="true"
+            >
+                ☁
+            </div>
+
+
+            <h1>
+                Telegram Drive
+            </h1>
+
+
+            <p>
+                Your personal Telegram-powered cloud drive.
+            </p>
+
+
+        </div>
+
+
+
+        <!-- =================================================
+             LOGIN
+        ================================================== -->
+
+        <section
+            class="auth-panel"
+            id="loginPanel"
+            aria-labelledby="loginTitle"
+        >
+
+
+            <div class="auth-heading">
+
+                <h2 id="loginTitle">
+                    Welcome back
+                </h2>
+
+                <p>
+                    Sign in to continue to your drive.
+                </p>
+
+            </div>
+
+
+            <form
+                id="loginForm"
+                novalidate
+            >
+
+
+                <div class="form-group">
+
+                    <label for="loginEmail">
+                        Email address
+                    </label>
+
+
+                    <input
+                        type="email"
+                        id="loginEmail"
+                        placeholder="you@example.com"
+                        autocomplete="email"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="loginPassword">
+                        Password
+                    </label>
+
+
+                    <input
+                        type="password"
+                        id="loginPassword"
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="auth-submit"
+                >
+                    Login
+                </button>
+
+
+                <p
+                    id="loginMessage"
+                    class="auth-message"
+                    aria-live="polite"
+                ></p>
+
+
+            </form>
+
+
+            <div class="auth-switch">
+
+                <span>
+                    Don't have an account?
+                </span>
+
+
+                <button
+                    type="button"
+                    id="showSignup"
+                >
+                    Create account
+                </button>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             SIGNUP
+        ================================================== -->
+
+        <section
+            class="auth-panel"
+            id="signupPanel"
+            hidden
+            aria-labelledby="signupTitle"
+        >
+
+
+            <div class="auth-heading">
+
+                <h2 id="signupTitle">
+                    Create your account
+                </h2>
+
+                <p>
+                    Start managing your Telegram files.
+                </p>
+
+            </div>
+
+
+            <form
+                id="signupForm"
+                novalidate
+            >
+
+
+                <div class="form-group">
+
+                    <label for="signupEmail">
+                        Email address
+                    </label>
+
+
+                    <input
+                        type="email"
+                        id="signupEmail"
+                        placeholder="you@example.com"
+                        autocomplete="email"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="signupPassword">
+                        Password
+                    </label>
+
+
+                    <input
+                        type="password"
+                        id="signupPassword"
+                        placeholder="Minimum 6 characters"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="auth-submit"
+                >
+                    Create Account
+                </button>
+
+
+                <p
+                    id="signupMessage"
+                    class="auth-message"
+                    aria-live="polite"
+                ></p>
+
+
+            </form>
+
+
+            <div class="auth-switch">
+
+                <span>
+                    Already have an account?
+                </span>
+
+
+                <button
+                    type="button"
+                    id="showLogin"
+                >
+                    Back to login
+                </button>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- AUTH FOOTER -->
+
+        <div class="auth-footer">
+
+            <span aria-hidden="true">
+                🔒
+            </span>
+
+            <span>
+                Secure authentication powered by Supabase
+            </span>
+
+        </div>
+
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     TELEGRAM CONNECT MODAL
+====================================================== -->
+
+<div
+    class="modal-overlay"
+    id="telegramConnectModal"
+    aria-hidden="true"
+>
+
+
+    <div
+        class="modal telegram-connect-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="telegramConnectTitle"
+    >
+
+
+        <!-- HEADER -->
+
+        <div class="modal-header">
+
+
+            <div>
+
+                <span class="modal-eyebrow">
+                    TELEGRAM
+                </span>
+
+
+                <h2 id="telegramConnectTitle">
+                    Connect Telegram
+                </h2>
+
+
+                <p id="telegramConnectSubtitle">
+                    Connect your Telegram account securely.
+                </p>
+
+            </div>
+
+
+            <button
+                type="button"
+                class="close-btn"
+                id="closeTelegramConnectModal"
+                aria-label="Close Telegram connection dialog"
+            >
+                &times;
+            </button>
+
+
+        </div>
+
+
+
+        <!-- =================================================
+             PHONE STEP
+        ================================================== -->
+
+        <form
+            id="telegramPhoneForm"
+            class="telegram-auth-step"
+        >
+
+
+            <div
+                class="telegram-step-indicator"
+                aria-label="Step 1 of 3"
+            >
+
+                <span class="active">
+                    1
+                </span>
+
+                <i></i>
+
+                <span>
+                    2
+                </span>
+
+                <i></i>
+
+                <span>
+                    3
+                </span>
+
+            </div>
+
+
+            <div class="form-group">
+
+
+                <label for="telegramPhone">
+                    Telegram Phone Number
+                </label>
+
+
+                <input
+                    type="tel"
+                    id="telegramPhone"
+                    placeholder="+91XXXXXXXXXX"
+                    autocomplete="tel"
+                    required
+                >
+
+
+                <small class="input-help">
+                    Enter your Telegram number with country code.
+                </small>
+
+
+            </div>
+
+
+            <p
+                id="telegramPhoneMessage"
+                class="auth-message"
+                aria-live="polite"
+            ></p>
+
+
+            <button
+                type="submit"
+                class="auth-submit"
+                id="sendTelegramOtpButton"
+            >
+                Send OTP
+            </button>
+
+
+        </form>
+
+
+
+        <!-- =================================================
+             OTP STEP
+        ================================================== -->
+
+        <form
+            id="telegramOtpForm"
+            class="telegram-auth-step"
+            hidden
+        >
+
+
+            <div
+                class="telegram-step-indicator"
+                aria-label="Step 2 of 3"
+            >
+
+                <span class="completed">
+                    ✓
+                </span>
+
+                <i class="active"></i>
+
+                <span class="active">
+                    2
+                </span>
+
+                <i></i>
+
+                <span>
+                    3
+                </span>
+
+            </div>
+
+
+            <div
+                class="telegram-verification-icon"
+                aria-hidden="true"
+            >
+                💬
+            </div>
+
+
+            <div class="telegram-verification-text">
+
+                <h3>
+                    Enter Telegram OTP
+                </h3>
+
+
+                <p>
+                    Telegram has sent a verification code to your account.
+                </p>
+
+            </div>
+
+
+            <div class="form-group">
+
+
+                <label for="telegramOtp">
+                    Verification Code
+                </label>
+
+
+                <input
+                    type="text"
+                    id="telegramOtp"
+                    class="telegram-otp-input"
+                    placeholder="12345"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="6"
+                    required
+                >
+
+
+            </div>
+
+
+            <p
+                id="telegramOtpMessage"
+                class="auth-message"
+                aria-live="polite"
+            ></p>
+
+
+            <button
+                type="submit"
+                class="auth-submit"
+                id="verifyTelegramOtpButton"
+            >
+                Verify OTP
+            </button>
+
+
+            <button
+                type="button"
+                class="secondary-modal-btn"
+                id="backToTelegramPhone"
+            >
+                ← Change phone number
+            </button>
+
+
+        </form>
+
+
+
+        <!-- =================================================
+             2FA PASSWORD STEP
+        ================================================== -->
+
+        <form
+            id="telegramPasswordForm"
+            class="telegram-auth-step"
+            hidden
+        >
+
+
+            <div
+                class="telegram-step-indicator"
+                aria-label="Step 3 of 3"
+            >
+
+                <span class="completed">
+                    ✓
+                </span>
+
+                <i class="completed"></i>
+
+                <span class="completed">
+                    ✓
+                </span>
+
+                <i class="active"></i>
+
+                <span class="active">
+                    3
+                </span>
+
+            </div>
+
+
+            <div
+                class="telegram-verification-icon"
+                aria-hidden="true"
+            >
+                🔐
+            </div>
+
+
+            <div class="telegram-verification-text">
+
+                <h3>
+                    Telegram 2FA Password
+                </h3>
+
+
+                <p>
+                    Your Telegram account has two-step verification enabled.
+                </p>
+
+            </div>
+
+
+            <div class="form-group">
+
+
+                <label for="telegramPassword">
+                    2FA Password
+                </label>
+
+
+                <input
+                    type="password"
+                    id="telegramPassword"
+                    class="telegram-password-input"
+                    placeholder="Enter your Telegram password"
+                    autocomplete="current-password"
+                    required
+                >
+
+
+            </div>
+
+
+            <p
+                id="telegramPasswordMessage"
+                class="auth-message"
+                aria-live="polite"
+            ></p>
+
+
+            <button
+                type="submit"
+                class="auth-submit"
+                id="verifyTelegramPasswordButton"
+            >
+                Connect Telegram
+            </button>
+
+
+        </form>
+
+
+
+        <!-- =================================================
+             CONNECTED STATE
+        ================================================== -->
+
+        <section
+            id="telegramConnectedState"
+            class="telegram-auth-step telegram-connected-state"
+            hidden
+            aria-labelledby="telegramConnectedTitle"
+        >
+
+
+            <div
+                class="connected-icon"
+                aria-hidden="true"
+            >
+                ✓
+            </div>
+
+
+            <h3 id="telegramConnectedTitle">
+                Telegram Connected
+            </h3>
+
+
+            <p>
+                Your Telegram account is successfully connected to Drive.
+            </p>
+
+
+            <div class="connected-account-card">
+
+
+                <div
+                    class="connected-avatar"
+                    aria-hidden="true"
+                >
+                    ✈️
+                </div>
+
+
+                <div>
+
+                    <strong id="connectedTelegramName">
+                        Telegram Account
+                    </strong>
+
+
+                    <span id="connectedTelegramUsername">
+                        —
+                    </span>
+
+                </div>
+
+
+            </div>
+
+
+            <button
+                type="button"
+                class="auth-submit"
+                id="closeConnectedTelegramButton"
+            >
+                Done
+            </button>
+
+
+            <button
+                type="button"
+                class="danger-outline-btn"
+                id="disconnectTelegramButton"
+            >
+                Disconnect Telegram
+            </button>
+
+
+        </section>
+
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     ADD TELEGRAM LINK MODAL
+====================================================== -->
+
+<div
+    class="modal-overlay"
+    id="telegramModal"
+    aria-hidden="true"
+>
+
+
+    <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="telegramModalTitle"
+    >
+
+
+        <div class="modal-header">
+
+
+            <div>
+
+                <span class="modal-eyebrow">
+                    TELEGRAM FILE
+                </span>
+
+
+                <h2 id="telegramModalTitle">
+                    Add Telegram File
+                </h2>
+
+
+                <p>
+                    Paste a Telegram post link to add it to your drive.
+                </p>
+
+            </div>
+
+
+            <button
+                type="button"
+                class="close-btn"
+                id="closeModal"
+                aria-label="Close Telegram file dialog"
+            >
+                &times;
+            </button>
+
+
+        </div>
+
+
+        <form
+            id="telegramForm"
+        >
+
+
+            <div class="form-group">
+
+
+                <label for="telegramUrl">
+                    Telegram Post URL
+                </label>
+
+
+                <input
+                    type="url"
+                    id="telegramUrl"
+                    placeholder="https://t.me/channel/123"
+                    autocomplete="off"
+                    required
+                >
+
+
+                <small class="input-help">
+                    Example: https://t.me/mychannel/123
+                </small>
+
+
+            </div>
+
+
+            <p
+                class="error-message"
+                id="urlError"
+                aria-live="polite"
+            ></p>
+
+
+            <button
+                type="submit"
+                class="add-file-btn"
+            >
+                Add to My Drive
+            </button>
+
+
+        </form>
+
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     CREATE FOLDER MODAL
+====================================================== -->
+
+<div
+    class="modal-overlay"
+    id="folderModal"
+    aria-hidden="true"
+>
+
+
+    <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="folderModalTitle"
+    >
+
+
+        <div class="modal-header">
+
+
+            <div>
+
+                <span class="modal-eyebrow">
+                    DRIVE
+                </span>
+
+
+                <h2 id="folderModalTitle">
+                    Create Folder
+                </h2>
+
+
+                <p>
+                    Create a new folder in your current location.
+                </p>
+
+            </div>
+
+
+            <button
+                type="button"
+                class="close-btn"
+                id="closeFolderModal"
+                aria-label="Close folder dialog"
+            >
+                &times;
+            </button>
+
+
+        </div>
+
+
+        <form
+            id="folderForm"
+        >
+
+
+            <div class="form-group">
+
+
+                <label for="folderName">
+                    Folder name
+                </label>
+
+
+                <input
+                    type="text"
+                    id="folderName"
+                    placeholder="e.g. Courses"
+                    maxlength="255"
+                    autocomplete="off"
+                    required
+                >
+
+
+            </div>
+
+
+            <p
+                id="folderMessage"
+                class="auth-message"
+                aria-live="polite"
+            ></p>
+
+
+            <button
+                type="submit"
+                class="add-file-btn"
+            >
+                Create Folder
+            </button>
+
+
+        </form>
+
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     TOAST CONTAINER
+====================================================== -->
+
+<div
+    class="toast-container"
+    id="toastContainer"
+    aria-live="polite"
+    aria-atomic="true"
+></div>
+
+
+
+<!-- =====================================================
+     APPLICATION SCRIPT
+====================================================== -->
+
+<script
+    src="js/app.js"
+    defer
+></script>
+
+
+</body>
+
+</html>

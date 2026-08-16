@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#0b0d12"
+    >
+
+    <title>Admin Panel — Telegram Drive</title>
+
+
+    <!--
+        Admin stylesheet
+    -->
+    <link
+        rel="stylesheet"
+        href="./admin.css"
+    >
+
+
+    <!--
+        Supabase browser client
+    -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+        defer
+    ></script>
+
+
+    <!--
+        Admin application
+    -->
+    <script
+        src="./admin.js"
+        defer
+    ></script>
+
+</head>
+
+
+<body>
+
+    <!-- =====================================================
+         APP
+    ====================================================== -->
+
+    <div
+        id="adminApp"
+        class="admin-app"
+    >
+
+
+        <!-- =================================================
+             SIDEBAR
+        ================================================== -->
+
+        <aside
+            id="adminSidebar"
+            class="admin-sidebar"
+        >
+
+            <div class="sidebar-header">
+
+                <a
+                    href="../index.html"
+                    class="admin-brand"
+                >
+
+                    <span class="brand-icon">
+                        TD
+                    </span>
+
+                    <span class="brand-text">
+
+                        <strong>
+                            Telegram Drive
+                        </strong>
+
+                        <small>
+                            Admin Panel
+                        </small>
+
+                    </span>
+
+                </a>
+
+
+                <button
+                    id="sidebarCloseBtn"
+                    class="icon-button sidebar-close"
+                    type="button"
+                    aria-label="Close sidebar"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <!-- =============================================
+                 NAVIGATION
+            ============================================== -->
+
+            <nav
+                class="admin-navigation"
+                aria-label="Admin navigation"
+            >
+
+                <p class="nav-label">
+                    Overview
+                </p>
+
+
+                <button
+                    class="nav-item active"
+                    type="button"
+                    data-section="dashboard"
+                >
+
+                    <span class="nav-icon">
+                        ◈
+                    </span>
+
+                    <span>
+                        Dashboard
+                    </span>
+
+                </button>
+
+
+                <p class="nav-label">
+                    Management
+                </p>
+
+
+                <button
+                    class="nav-item"
+                    type="button"
+                    data-section="users"
+                >
+
+                    <span class="nav-icon">
+                        ♙
+                    </span>
+
+                    <span>
+                        Users
+                    </span>
+
+                </button>
+
+
+                <button
+                    class="nav-item"
+                    type="button"
+                    data-section="files"
+                >
+
+                    <span class="nav-icon">
+                        ▣
+                    </span>
+
+                    <span>
+                        Files
+                    </span>
+
+                </button>
+
+
+                <button
+                    class="nav-item"
+                    type="button"
+                    data-section="folders"
+                >
+
+                    <span class="nav-icon">
+                        □
+                    </span>
+
+                    <span>
+                        Folders
+                    </span>
+
+                </button>
+
+
+                <button
+                    class="nav-item"
+                    type="button"
+                    data-section="telegram"
+                >
+
+                    <span class="nav-icon">
+                        ◉
+                    </span>
+
+                    <span>
+                        Telegram
+                    </span>
+
+                </button>
+
+
+                <p class="nav-label">
+                    Monitoring
+                </p>
+
+
+                <button
+                    class="nav-item"
+                    type="button"
+                    data-section="activity"
+                >
+
+                    <span class="nav-icon">
+                        ◷
+                    </span>
+
+                    <span>
+                        Activity
+                    </span>
+
+                </button>
+
+            </nav>
+
+
+            <!-- =============================================
+                 SIDEBAR FOOTER
+            ============================================== -->
+
+            <div class="sidebar-footer">
+
+                <a
+                    href="../index.html"
+                    class="back-to-drive"
+                >
+
+                    <span>
+                        ←
+                    </span>
+
+                    <span>
+                        Back to Drive
+                    </span>
+
+                </a>
+
+
+                <button
+                    id="adminLogoutBtn"
+                    class="logout-button"
+                    type="button"
+                >
+
+                    <span>
+                        ↪
+                    </span>
+
+                    <span>
+                        Sign out
+                    </span>
+
+                </button>
+
+            </div>
+
+        </aside>
+
+
+        <!-- =================================================
+             SIDEBAR OVERLAY
+        ================================================== -->
+
+        <div
+            id="sidebarOverlay"
+            class="sidebar-overlay"
+        ></div>
+
+
+        <!-- =================================================
+             MAIN
+        ================================================== -->
+
+        <main class="admin-main">
+
+
+            <!-- =============================================
+                 TOPBAR
+            ============================================== -->
+
+            <header class="admin-topbar">
+
+                <div class="topbar-left">
+
+                    <button
+                        id="sidebarToggleBtn"
+                        class="icon-button menu-button"
+                        type="button"
+                        aria-label="Open sidebar"
+                    >
+                        ☰
+                    </button>
+
+
+                    <div class="page-heading">
+
+                        <h1 id="pageTitle">
+                            Dashboard
+                        </h1>
+
+                        <p id="pageSubtitle">
+                            Overview of your Telegram Drive
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="topbar-right">
+
+
+                    <!-- =====================================
+                         REFRESH
+                    ====================================== -->
+
+                    <button
+                        id="refreshButton"
+                        class="topbar-button"
+                        type="button"
+                        title="Refresh"
+                    >
+
+                        <span id="refreshIcon">
+                            ↻
+                        </span>
+
+                        <span class="refresh-label">
+                            Refresh
+                        </span>
+
+                    </button>
+
+
+                    <!-- =====================================
+                         ADMIN PROFILE
+                    ====================================== -->
+
+                    <div class="admin-profile">
+
+                        <div
+                            id="adminAvatar"
+                            class="admin-avatar"
+                        >
+                            A
+                        </div>
+
+
+                        <div class="admin-profile-info">
+
+                            <strong id="adminEmail">
+                                Admin
+                            </strong>
+
+                            <span>
+                                Administrator
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <!-- =================================================
+                 CONTENT
+            ================================================== -->
+
+            <div class="admin-content">
+
+
+                <!-- =============================================
+                     GLOBAL LOADING
+                ============================================== -->
+
+                <div
+                    id="globalLoading"
+                    class="global-loading"
+                    hidden
+                >
+
+                    <div class="loading-spinner"></div>
+
+                    <span>
+                        Loading...
+                    </span>
+
+                </div>
+
+
+                <!-- =============================================
+                     ERROR MESSAGE
+                ============================================== -->
+
+                <div
+                    id="adminError"
+                    class="admin-alert error-alert"
+                    hidden
+                    role="alert"
+                >
+
+                    <span class="alert-icon">
+                        !
+                    </span>
+
+                    <span
+                        id="adminErrorMessage"
+                    >
+                        Something went wrong.
+                    </span>
+
+                    <button
+                        id="closeErrorButton"
+                        type="button"
+                        class="alert-close"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+                <!-- =============================================
+                     DASHBOARD
+                ============================================== -->
+
+                <section
+                    id="section-dashboard"
+                    class="admin-section active"
+                    data-section-content="dashboard"
+                >
+
+                    <div class="section-header">
+
+                        <div>
+
+                            <span class="eyebrow">
+                                Overview
+                            </span>
+
+                            <h2>
+                                Dashboard
+                            </h2>
+
+                            <p>
+                                Monitor your Telegram Drive
+                                from one place.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- =====================================
+                         STAT CARDS
+                    ====================================== -->
+
+                    <div class="stats-grid">
+
+
+                        <article class="stat-card">
+
+                            <div class="stat-card-top">
+
+                                <span class="stat-label">
+                                    Total Users
+                                </span>
+
+                                <span class="stat-icon">
+                                    ♙
+                                </span>
+
+                            </div>
+
+                            <strong
+                                id="statTotalUsers"
+                                class="stat-value"
+                            >
+                                —
+                            </strong>
+
+                            <span class="stat-description">
+                                Registered accounts
+                            </span>
+
+                        </article>
+
+
+                        <article class="stat-card">
+
+                            <div class="stat-card-top">
+
+                                <span class="stat-label">
+                                    Total Files
+                                </span>
+
+                                <span class="stat-icon">
+                                    ▣
+                                </span>
+
+                            </div>
+
+                            <strong
+                                id="statTotalFiles"
+                                class="stat-value"
+                            >
+                                —
+                            </strong>
+
+                            <span class="stat-description">
+                                Files stored
+                            </span>
+
+                        </article>
+
+
+                        <article class="stat-card">
+
+                            <div class="stat-card-top">
+
+                                <span class="stat-label">
+                                    Storage Used
+                                </span>
+
+                                <span class="stat-icon">
+                                    ◫
+                                </span>
+
+                            </div>
+
+                            <strong
+                                id="statStorage"
+                                class="stat-value"
+                            >
+                                —
+                            </strong>
+
+                            <span class="stat-description">
+                                Across all users
+                            </span>
+
+                        </article>
+
+
+                        <article class="stat-card">
+
+                            <div class="stat-card-top">
+
+                                <span class="stat-label">
+                                    Folders
+                                </span>
+
+                                <span class="stat-icon">
+                                    □
+                                </span>
+
+                            </div>
+
+                            <strong
+                                id="statTotalFolders"
+                                class="stat-value"
+                            >
+                                —
+                            </strong>
+
+                            <span class="stat-description">
+                                Created folders
+                            </span>
+
+                        </article>
+
+
+                        <article class="stat-card">
+
+                            <div class="stat-card-top">
+
+                                <span class="stat-label">
+                                    Telegram Accounts
+                                </span>
+
+                                <span class="stat-icon">
+                                    ◉
+                                </span>
+
+                            </div>
+
+                            <strong
+                                id="statTelegramAccounts"
+                                class="stat-value"
+                            >
+                                —
+                            </strong>
+
+                            <span class="stat-description">
+                                Connected accounts
+                            </span>
+
+                        </article>
+
+                    </div>
+
+
+                    <!-- =====================================
+                         DASHBOARD LOWER GRID
+                    ====================================== -->
+
+                    <div class="dashboard-grid">
+
+
+                        <!-- =================================
+                             RECENT ACTIVITY
+                        ================================== -->
+
+                        <article class="panel-card activity-panel">
+
+                            <div class="panel-header">
+
+                                <div>
+
+                                    <span class="eyebrow">
+                                        Latest
+                                    </span>
+
+                                    <h3>
+                                        Recent Activity
+                                    </h3>
+
+                                </div>
+
+                                <button
+                                    class="text-button"
+                                    type="button"
+                                    data-section-link="activity"
+                                >
+                                    View all
+                                </button>
+
+                            </div>
+
+
+                            <div
+                                id="dashboardActivity"
+                                class="activity-list"
+                            >
+
+                                <div class="empty-state compact">
+
+                                    <span class="empty-icon">
+                                        ◷
+                                    </span>
+
+                                    <p>
+                                        No activity yet.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+
+                        <!-- =================================
+                             QUICK ACTIONS
+                        ================================== -->
+
+                        <article class="panel-card quick-actions-panel">
+
+                            <div class="panel-header">
+
+                                <div>
+
+                                    <span class="eyebrow">
+                                        Shortcuts
+                                    </span>
+
+                                    <h3>
+                                        Quick Actions
+                                    </h3>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="quick-actions">
+
+                                <button
+                                    class="quick-action"
+                                    type="button"
+                                    data-section-link="users"
+                                >
+
+                                    <span class="quick-action-icon">
+                                        ♙
+                                    </span>
+
+                                    <span>
+
+                                        <strong>
+                                            Manage Users
+                                        </strong>
+
+                                        <small>
+                                            View registered users
+                                        </small>
+
+                                    </span>
+
+                                    <span class="arrow">
+                                        →
+                                    </span>
+
+                                </button>
+
+
+                                <button
+                                    class="quick-action"
+                                    type="button"
+                                    data-section-link="files"
+                                >
+
+                                    <span class="quick-action-icon">
+                                        ▣
+                                    </span>
+
+                                    <span>
+
+                                        <strong>
+                                            Manage Files
+                                        </strong>
+
+                                        <small>
+                                            Browse stored files
+                                        </small>
+
+                                    </span>
+
+                                    <span class="arrow">
+                                        →
+                                    </span>
+
+                                </button>
+
+
+                                <button
+                                    class="quick-action"
+                                    type="button"
+                                    data-section-link="telegram"
+                                >
+
+                                    <span class="quick-action-icon">
+                                        ◉
+                                    </span>
+
+                                    <span>
+
+                                        <strong>
+                                            Telegram Accounts
+                                        </strong>
+
+                                        <small>
+                                            View connections
+                                        </small>
+
+                                    </span>
+
+                                    <span class="arrow">
+                                        →
+                                    </span>
+
+                                </button>
+
+                            </div>
+
+                        </article>
+
+                    </div>
+
+                </section>
+
+
+                <!-- =============================================
+                     USERS
+                ============================================== -->
+
+                <section
+                    id="section-users"
+                    class="admin-section"
+                    data-section-content="users"
+                    hidden
+                >
+
+                    <div class="section-header">
+
+                        <div>
+
+                            <span class="eyebrow">
+                                Management
+                            </span>
+
+                            <h2>
+                                Users
+                            </h2>
+
+                            <p>
+                                View and manage registered
+                                Telegram Drive users.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="panel-card">
+
+                        <div class="toolbar">
+
+                            <div class="search-box">
+
+                                <span class="search-icon">
+                                    ⌕
+                                </span>
+
+                                <input
+                                    id="userSearchInput"
+                                    type="search"
+                                    placeholder="Search by email or user ID..."
+                                    autocomplete="off"
+                                >
+
+                            </div>
+
+                            <button
+                                id="userSearchButton"
+                                class="primary-button"
+                                type="button"
+                            >
+                                Search
+                            </button>
+
+                        </div>
+
+
+                        <div class="table-wrapper">
+
+                            <table class="admin-table">
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>
+                                            User
+                                        </th>
+
+                                        <th>
+                                            Created
+                                        </th>
+
+                                        <th>
+                                            Files
+                                        </th>
+
+                                        <th>
+                                            Storage
+                                        </th>
+
+                                        <th>
+                                            Telegram
+                                        </th>
+
+                                        <th>
+                                            Action
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody
+                                    id="usersTableBody"
+                                >
+
+                                    <tr>
+
+                                        <td
+                                            colspan="6"
+                                            class="table-placeholder"
+                                        >
+                                            Loading users...
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+
+                        <div
+                            id="usersPagination"
+                            class="pagination"
+                        ></div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- =============================================
+                     FILES
+                ============================================== -->
+
+                <section
+                    id="section-files"
+                    class="admin-section"
+                    data-section-content="files"
+                    hidden
+                >
+
+                    <div class="section-header">
+
+                        <div>
+
+                            <span class="eyebrow">
+                                Management
+                            </span>
+
+                            <h2>
+                                Files
+                            </h2>
+
+                            <p>
+                                Browse files stored by all users.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="panel-card">
+
+                        <div class="toolbar">
+
+                            <div class="search-box">
+
+                                <span class="search-icon">
+                                    ⌕
+                                </span>
+
+                                <input
+                                    id="fileSearchInput"
+                                    type="search"
+                                    placeholder="Search files..."
+                                    autocomplete="off"
+                                >
+
+                            </div>
+
+                            <button
+                                id="fileSearchButton"
+                                class="primary-button"
+                                type="button"
+                            >
+                                Search
+                            </button>
+
+                        </div>
+
+
+                        <div class="table-wrapper">
+
+                            <table class="admin-table">
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>
+                                            File
+                                        </th>
+
+                                        <th>
+                                            User
+                                        </th>
+
+                                        <th>
+                                            Type
+                                        </th>
+
+                                        <th>
+                                            Size
+                                        </th>
+
+                                        <th>
+                                            Added
+                                        </th>
+
+                                        <th>
+                                            Action
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody
+                                    id="filesTableBody"
+                                >
+
+                                    <tr>
+
+                                        <td
+                                            colspan="6"
+                                            class="table-placeholder"
+                                        >
+                                            Loading files...
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+
+                        <div
+                            id="filesPagination"
+                            class="pagination"
+                        ></div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- =============================================
+                     FOLDERS
+                ============================================== -->
+
+                <section
+                    id="section-folders"
+                    class="admin-section"
+                    data-section-content="folders"
+                    hidden
+                >
+
+                    <div class="section-header">
+
+                        <div>
+
+                            <span class="eyebrow">
+                                Management
+                            </span>
+
+                            <h2>
+                                Folders
+                            </h2>
+
+                            <p>
+                                View folders created across the platform.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="panel-card">
+
+                        <div class="table-wrapper">
+
+                            <table class="admin-table">
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>
+                                            Folder
+                                        </th>
+
+                                        <th>
+                                            User
+                                        </th>
+
+                                        <th>
+                                            Parent
+                                        </th>
+
+                                        <th>
+                                            Files
+                                        </th>
+
+                                        <th>
+                                            Created
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody
+                                    id="foldersTableBody"
+                                >
+
+                                    <tr>
+
+                                        <td
+                                            colspan="5"
+                                            class="table-placeholder"
+                                        >
+                                            Loading folders...
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- =============================================
+                     TELEGRAM
+                ============================================== -->
+
+                <section
+                    id="section-telegram"
+                    class="admin-section"
+                    data-section-content="telegram"
+                    hidden
+                >
+
+                    <div class="section-header">
+
+                        <div>
+
+                            <span class="eyebrow">
+                                Management
+                            </span>
+
+                            <h2>
+                                Telegram Accounts
+                            </h2>
+
+                            <p>
+                                Monitor connected Telegram accounts.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="panel-card">
+
+                        <div class="table-wrapper">
+
+                            <table class="admin-table">
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>
+                                            User
+                                        </th>
+
+                                        <th>
+                                            Telegram ID
+                                        </th>
+
+                                        <th>
+                                            Username
+                                        </th>
+
+                                        <th>
+                                            Phone
+                                        </th>
+
+                                        <th>
+                                            Connected
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody
+                                    id="telegramTableBody"
+                                >
+
+                                    <tr>
+
+                                        <td
+                                            colspan="5"
+                                            class="table-placeholder"
+                                        >
+                                            Loading Telegram accounts...
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- =============================================
+                     ACTIVITY
+                ============================================== -->
+
+                <section
+                    id="section-activity"
+                    class="admin-section"
+                    data-section-content="activity"
+                    hidden
+                >
+
+                    <div class="section-header">
+
+                        <div>
+
+                            <span class="eyebrow">
+                                Monitoring
+                            </span>
+
+                            <h2>
+                                Activity
+                            </h2>
+
+                            <p>
+                                Recent activity across Telegram Drive.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="panel-card">
+
+                        <div
+                            id="activityList"
+                            class="activity-list large"
+                        >
+
+                            <div class="empty-state">
+
+                                <span class="empty-icon">
+                                    ◷
+                                </span>
+
+                                <h3>
+                                    Loading activity...
+                                </h3>
+
+                                <p>
+                                    Please wait.
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+            </div>
+
+        </main>
+
+
+    </div>
+
+
+    <!-- =====================================================
+         USER DETAILS MODAL
+    ====================================================== -->
+
+    <div
+        id="userModal"
+        class="modal"
+        hidden
+    >
+
+        <div
+            class="modal-backdrop"
+            data-close-modal="userModal"
+        ></div>
+
+
+        <div
+            class="modal-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="userModalTitle"
+        >
+
+            <div class="modal-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        User Details
+                    </span>
+
+                    <h2 id="userModalTitle">
+                        User
+                    </h2>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="icon-button"
+                    data-close-modal="userModal"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div
+                id="userModalBody"
+                class="modal-body"
+            >
+
+                <div class="modal-loading">
+
+                    <div class="loading-spinner"></div>
+
+                    <span>
+                        Loading user...
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         CONFIRM MODAL
+    ====================================================== -->
+
+    <div
+        id="confirmModal"
+        class="modal"
+        hidden
+    >
+
+        <div
+            class="modal-backdrop"
+            data-close-modal="confirmModal"
+        ></div>
+
+
+        <div
+            class="modal-dialog confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmModalTitle"
+        >
+
+            <div class="modal-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        Confirmation
+                    </span>
+
+                    <h2 id="confirmModalTitle">
+                        Are you sure?
+                    </h2>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="icon-button"
+                    data-close-modal="confirmModal"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="modal-body">
+
+                <p
+                    id="confirmModalMessage"
+                    class="confirm-message"
+                >
+                    This action cannot be undone.
+                </p>
+
+            </div>
+
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    data-close-modal="confirmModal"
+                >
+                    Cancel
+                </button>
+
+
+                <button
+                    id="confirmActionButton"
+                    type="button"
+                    class="danger-button"
+                >
+                    Delete
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+</body>
+
+</html>
